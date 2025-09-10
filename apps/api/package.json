@@ -1,0 +1,52 @@
+{
+  "name": "api",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "npx tsc --noEmit",
+    "deploy": "wrangler deploy --minify --config wrangler.toml --env=production",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "auth:generate": "npx --yes @better-auth/cli@latest generate --config src/auth/index.ts --output src/db/auth.schema.ts -y",
+    "auth:format": "npx --yes prettier --write src/db/auth.schema.ts",
+    "auth:update": "npm run auth:generate && npm run auth:format",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:dev": "wrangler d1 migrations apply DB_PROD --local",
+    "db:migrate:prod": "wrangler d1 migrations apply DB_PROD --remote",
+    "db:studio:dev": "drizzle-kit studio",
+    "db:studio:prod": "NODE_ENV=production drizzle-kit studio",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@biomejs/biome": "^2.2.2",
+    "@libsql/client": "^0.15.14",
+    "better-auth": "^1.2.8",
+    "better-auth-cloudflare": "^0.2.4",
+    "better-sqlite3": "^12.2.0",
+    "drizzle-orm": "^0.44.5",
+    "hono": "^4.8.10",
+    "kysely-d1": "^0.4.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.15.3",
+    "drizzle-kit": "^0.31.4",
+    "typescript": "^5.8.3",
+    "wrangler": "^4.32.0"
+  },
+  "exports": {
+    ".": {
+        "types": "./lib-esm/node.d.ts",
+        "import": {
+            "workerd": "./lib-esm/web.js",
+            "deno": "./lib-esm/web.js",
+            "edge-light": "./lib-esm/web.js",
+            "netlify": "./lib-esm/web.js",
+            "node": "./lib-esm/node.js",
+            "browser": "./lib-esm/web.js",
+            "default": "./lib-esm/node.js"
+        },
+        "require": "./lib-cjs/node.js"
+    }
+  }
+}

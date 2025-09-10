@@ -1,0 +1,18 @@
+[phases.setup]
+nixPkgs = ["pnpm", "nodejs"]
+systemPackages = ["sqlite", "gcc", "g++", "python3", "gnumake", "stdenv.cc.cc.lib"]
+
+[phases.install]
+cmd = "pnpm install"
+
+[phases.install.env]
+NODE_GYP_FORCE_PYTHON = "python3"
+
+[phases.lint]
+cmd = "pnpm lint"
+
+[phases.build]
+cmd = "pnpm run push"
+
+[start]
+cmd = "pnpm start"

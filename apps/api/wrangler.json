@@ -1,0 +1,78 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "compatibility_date": "2024-09-23",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "main": "src/index.ts",
+  "name": "wiws",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_id": "f79ca3cd-5940-4059-9851-7034a824e0b6",
+      "database_name": "wiws",
+      "migrations_dir": "./migrations"
+    },
+    {
+      "binding": "DB_PROD",
+      "database_id": "6feb589a-d559-4953-b38a-5885c1af311a",
+      "database_name": "wiws-prod",
+      "migrations_dir": "./migrations"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "KV",
+      "id": "663d0ec181e043fc9594fd2bb481e1ee"
+    }
+  ],
+  "dev": {
+    "local_protocol": "http",
+    "port": 8787
+  },
+  "env": {
+    "production": {
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_id": "6feb589a-d559-4953-b38a-5885c1af311a",
+          "database_name": "wiws-prod",
+          "migrations_dir": "./migrations"
+        },
+        {
+          "binding": "DB_PROD",
+          "database_id": "6feb589a-d559-4953-b38a-5885c1af311a",
+          "database_name": "wiws-prod",
+          "migrations_dir": "./migrations"
+        }
+      ],
+      "kv_namespaces": [
+        {
+          "binding": "KV",
+          "id": "663d0ec181e043fc9594fd2bb481e1ee"
+        }
+      ],
+      "vars": {
+        "BETTER_AUTH_SECRET": "4a08b0e8dea826ab9187dd28de3c6fc35a633b05af6a3b53523f17918a5730de",
+        "BETTER_AUTH_URL": "https://wiws-api.harjjotsinghh.workers.dev",
+        "ENVIRONMENT": "production",
+        "FRONTEND_URL": "https://wiws.pages.dev",
+        "TURSO_DB_AUTH_TOKEN": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NTYzMzAxNDcsImlkIjoiMDYzNjdhNjYtOWFiZi00MGI0LWI3ZGMtMTliZGRhZmZlZmZjIiwicmlkIjoiYjQzYWFmYWItNzA5MS00NTUyLTlmZWEtODc2MmMwODI2ZmUxIn0.cQsfxukxSiN9w0XiIe1hBhbYwCHTINZmTfYobh-EgWUlenIBEOg5JN20qEWzFWgV5jazjAKSTFkhfdYk9tuvDA",
+        "TURSO_DB_URL": "libsql://wiws-harjjotsinghh.aws-ap-south-1.turso.io"
+      }
+    }
+  },
+  "triggers": {
+    "crons": [
+      "0 0 * * *"
+    ]
+  },
+  "vars": {
+    "BETTER_AUTH_SECRET": "4a08b0e8dea826ab9187dd28de3c6fc35a633b05af6a3b53523f17918a5730de",
+    "BETTER_AUTH_URL": "http://localhost:8787",
+    "ENVIRONMENT": "development",
+    "FRONTEND_URL": "http://localhost:5174",
+    "TURSO_DB_AUTH_TOKEN": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NTYzMzAxNDcsImlkIjoiMDYzNjdhNjYtOWFiZi00MGI0LWI3ZGMtMTliZGRhZmZlZmZjIiwicmlkIjoiYjQzYWFmYWItNzA5MS00NTUyLTlmZWEtODc2MmMwODI2ZmUxIn0.cQsfxukxSiN9w0XiIe1hBhbYwCHTINZmTfYobh-EgWUlenIBEOg5JN20qEWzFWgV5jazjAKSTFkhfdYk9tuvDA",
+    "TURSO_DB_URL": "libsql://wiws-harjjotsinghh.aws-ap-south-1.turso.io"
+  }
+}
