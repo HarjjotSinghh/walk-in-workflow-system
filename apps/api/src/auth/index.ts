@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { admin, anonymous, multiSession } from "better-auth/plugins";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { users, session, account, verification } from "../db/schema";
+import { user, session, account, verification } from "../db/schema";
 import { createDb } from "../db/utils";
 import type { CloudflareBindings } from "../env";
 import type { UserRole } from "../types/auth";
@@ -10,19 +10,19 @@ import type { UserRole } from "../types/auth";
 function createAuth(env?: CloudflareBindings, cf?: IncomingRequestCfProperties) {
     return betterAuth({
         database: env?.DATABASE 
-            ? drizzleAdapter(createDb(env.DATABASE), {
+            ? drizzleAdapter(createDb(), {
                 provider: "sqlite",
                 schema: {
-                    user: users,
+                    user: user,
                     session: session,
                     account: account,
                     verification: verification,
                 },
             })
-            : drizzleAdapter(createDb({} as D1Database), {
+            : drizzleAdapter(createDb(), {
                 provider: "sqlite",
                 schema: {
-                    user: users,
+                    user: user,
                     session: session,
                     account: account,
                     verification: verification,

@@ -7,7 +7,7 @@ function getLocalD1DB() {
         const basePath = path.resolve(".wrangler");
         const dbFile = fs
             .readdirSync(basePath, { encoding: "utf-8", recursive: true })
-            .find(f => f.endsWith(".sqlite"));
+            .find((f: any) => f.endsWith(".sqlite"));
 
         if (!dbFile) {
             throw new Error(`.sqlite file not found in ${basePath}`);

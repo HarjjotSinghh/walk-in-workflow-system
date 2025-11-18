@@ -9,7 +9,7 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx",
-    "types": ["./worker-configuration.d.ts"],
+    "types": ["./worker-configuration.d.ts", "node"],
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,

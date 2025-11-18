@@ -1,17 +1,31 @@
+// Cloudflare Workers environment bindings
 export interface CloudflareBindings {
-    DB: D1Database;
-    DB_PROD: D1Database;
-    KV: KVNamespace;
-    BETTER_AUTH_SECRET?: string;
-    BETTER_AUTH_URL?: string;
-    FRONTEND_URL?: string;
-    ENVIRONMENT?: string;
+  // Clerk Authentication
+  CLERK_PUBLISHABLE_KEY: string;
+  CLERK_SECRET_KEY: string;
+  
+  // Database
+  DB: D1Database;
+  DB_PROD: D1Database;
+  DATABASE?: D1Database; // Alias for compatibility
+  
+  // KV Storage
+  KV: KVNamespace;
+  
+  // Environment
+  ENVIRONMENT?: 'development' | 'production';
+  FRONTEND_URL?: string;
+  
+  // Legacy (can be removed after migration)
+  BETTER_AUTH_SECRET?: string;
+  BETTER_AUTH_URL?: string;
+  TURSO_DB_URL?: string;
+  TURSO_DB_AUTH_TOKEN?: string;
 }
 
-declare global {
-    namespace NodeJS {
-        interface ProcessEnv extends CloudflareBindings {
-            // Additional environment variables can be added here
-        }
-    }
+// Extend Hono's Env type
+declare module 'hono' {
+  interface Env {
+    Bindings: CloudflareBindings;
+  }
 }

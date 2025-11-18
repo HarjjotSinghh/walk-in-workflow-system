@@ -18,35 +18,34 @@
   },
   "dependencies": {
     "@biomejs/biome": "^2.2.2",
+    "@clerk/backend": "^2.23.0",
     "@libsql/client": "^0.15.14",
     "better-auth": "^1.2.8",
     "better-auth-cloudflare": "^0.2.4",
-    "better-sqlite3": "^12.2.0",
     "drizzle-orm": "^0.44.5",
     "hono": "^4.8.10",
     "kysely-d1": "^0.4.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
-    "@types/node": "^22.15.3",
+    "@types/node": "^24.10.1",
     "drizzle-kit": "^0.31.4",
     "typescript": "^5.8.3",
     "wrangler": "^4.32.0"
   },
   "exports": {
     ".": {
-        "types": "./lib-esm/node.d.ts",
-        "import": {
-            "workerd": "./lib-esm/web.js",
-            "deno": "./lib-esm/web.js",
-            "edge-light": "./lib-esm/web.js",
-            "netlify": "./lib-esm/web.js",
-            "node": "./lib-esm/node.js",
-            "browser": "./lib-esm/web.js",
-            "default": "./lib-esm/node.js"
-        },
-        "require": "./lib-cjs/node.js"
+      "types": "./lib-esm/node.d.ts",
+      "import": {
+        "workerd": "./lib-esm/web.js",
+        "deno": "./lib-esm/web.js",
+        "edge-light": "./lib-esm/web.js",
+        "netlify": "./lib-esm/web.js",
+        "node": "./lib-esm/node.js",
+        "browser": "./lib-esm/web.js",
+        "default": "./lib-esm/node.js"
+      },
+      "require": "./lib-cjs/node.js"
     }
   }
 }
