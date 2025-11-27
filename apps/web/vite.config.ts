@@ -2,19 +2,18 @@ import path from "path";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv, PluginOption } from "vite";
 import tailwindcss from "@tailwindcss/vite";
-import { cloudflare } from "@cloudflare/vite-plugin";
 
 // Load env variables and export config
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "VITE_");
   const apiUrl = env.VITE_API_URL || "http://localhost:8787";
-  const isProduction = mode === "production";
 
   return {
-    plugins: [react(), tailwindcss() as PluginOption, cloudflare()],
+    plugins: [react(), tailwindcss() as PluginOption],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
+        "~": path.resolve(__dirname, "./src"),
       },
     },
     server: {
@@ -23,9 +22,9 @@ export default defineConfig(({ mode }) => {
         "/api": {
           target: apiUrl, // Cloudflare Workers dev server
           changeOrigin: true,
-          
+
           headers: {
-            'Content-Type': 'application/json'
+            "Content-Type": "application/json",
           },
           secure: false,
         },
@@ -82,12 +81,6 @@ export default defineConfig(({ mode }) => {
           manualChunks: undefined,
         },
       },
-    },
-    // Configure Cloudflare plugin for proxy approach
-    cloudflare: {
-      // This ensures the plugin knows we're using a proxy approach
-      // and doesn't try to bundle the API into the Worker
-      mode: "pages", // Use Pages mode since we're deploying to Pages
     },
   };
 });

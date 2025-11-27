@@ -26,6 +26,7 @@ export function ConsultantDashboard() {
   const fetchData = async () => {
     try {
       const response = await getTodayVisitors() as { visitors: Visitor[] }
+      console.log(response)
       const assignedToMe = response.visitors.filter(v => v.assignedConsultant === (user?.name || 'CA Meera Jain'))
       setMyQueue(assignedToMe.filter(v => v.status === 'approved'))
       setCompletedSessions(assignedToMe.filter(v => v.status === 'completed'))

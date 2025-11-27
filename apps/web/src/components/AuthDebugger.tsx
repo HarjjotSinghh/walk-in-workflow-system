@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '~/contexts/AuthContext';
-import { authClient } from '~/lib/auth-client';
+import { getCurrentUser, login } from '~/api/auth';
 
 export function AuthDebugger() {
   const { user, isLoading, isAuthenticated, session } = useAuth();
@@ -23,7 +23,7 @@ export function AuthDebugger() {
 
     const checkSession = async () => {
       try {
-        const sessionData = await authClient.getSession();
+        const sessionData = await getCurrentUser();
         setDebugInfo(sessionData);
       } catch (error: unknown) {
         setDebugInfo({ error: error instanceof Error ? error.message : 'Unknown error' });
@@ -47,9 +47,9 @@ export function AuthDebugger() {
 
   const testEmailLogin = async () => {
     try {
-      const response = await authClient.signIn.email({
-        email: 'admin@wiws.com',
-        password: 'admin123',
+      const response = await login({
+        email: "admin@wiws.com",
+        password: "admin123",
       });
       // console.log('Email login response:', response);
       setDebugInfo(response);

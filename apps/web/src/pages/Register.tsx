@@ -1,6 +1,7 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { useNavigate } from "react-router-dom"
+import { Navigate } from "react-router-dom"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
@@ -23,6 +24,7 @@ import {
   UserPlus
 } from "lucide-react"
 import { useAuth } from "~/contexts/AuthContext"
+import { getDefaultDashboardRoute } from "~/lib/permissions"
 import toast from "react-hot-toast"
 import { UserRole } from "~/types/auth"
 
@@ -35,9 +37,34 @@ type RegisterForm = {
 
 export function Register() {
   const [loading, setLoading] = useState(false)
-  const { register: registerUser } = useAuth()
+  const { register: registerUser, isAuthenticated, isLoading, user } = useAuth()
   const navigate = useNavigate()
   const { register, handleSubmit, setValue, watch } = useForm<RegisterForm>()
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && user) {
+      const defaultRoute = getDefaultDashboardRoute(user);
+      navigate(defaultRoute, { replace: true });
+    }
+  }, [isAuthenticated, isLoading, user, navigate]);
+
+  // Show loading while checking auth status
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect if already authenticated
+  if (isAuthenticated && user) {
+    const defaultRoute = getDefaultDashboardRoute(user);
+    return <Navigate to={defaultRoute} replace />;
+  }
 
   const watchedRole = watch("role")
 
@@ -51,9 +78,18 @@ export function Register() {
       navigate("/login")
     } catch (error: unknown) {
       console.log("Register error:", error)
-      toast.error(
-        error instanceof Error ? error?.message : 'Unknown Register Error'
-      )
+
+      // Check if this is an email verification requirement (not an actual error)
+      if (error instanceof Error && (error as Error & { requiresVerification?: boolean }).requiresVerification) {
+        toast.success(
+          error.message || "Account created! Please check your email to verify your account before signing in."
+        )
+        navigate("/login")
+      } else {
+        toast.error(
+          error instanceof Error ? error?.message : 'Registration failed. Please try again.'
+        )
+      }
     } finally {
       setLoading(false)
     }
@@ -118,6 +154,8 @@ export function Register() {
                 </SelectContent>
               </Select>
             </div>
+            {/* Clerk CAPTCHA element for bot protection */}
+            <div id="clerk-captcha" />
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
                 "Loading..."

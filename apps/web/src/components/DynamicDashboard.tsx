@@ -8,7 +8,7 @@ import { getDefaultDashboardRoute, canAccessDashboard } from "~/lib/permissions"
 
 export function DynamicDashboard() {
   const navigate = useNavigate()
-  const { user, isLoading: authLoading } = useAuth()
+  const { user, isLoading: authLoading, isAuthenticated } = useAuth()
   const [loading, setLoading] = useState(true)
   
   useEffect(() => {
@@ -19,20 +19,36 @@ export function DynamicDashboard() {
           return;
         }
         
-        // If no user after auth loading is complete, redirect to login
-        if (!user) {
-          console.log('No user found, redirecting to login');
+        // If not authenticated after auth loading is complete, redirect to login
+        // Use isAuthenticated from Clerk (more reliable)
+        if (!isAuthenticated) {
+          console.log('Not authenticated, redirecting to login');
           navigate('/login', { replace: true });
+          return;
+        }
+
+        // If authenticated but no user data yet, wait a bit for it to load
+        // The user data comes from the API call in AuthContext
+        // Since we're authenticated, we should wait for user data rather than redirecting
+        if (!user) {
+          console.log('Authenticated but user data not loaded yet, waiting...');
+          // Keep loading state true so we show loading screen
+          // The useEffect will re-run when user changes
           return;
         }
 
         // User is authenticated, proceed with role-based routing
         const wiwsUser = user as wiwsUser;
-        // console.log('Authenticated user:', wiwsUser);
+        console.log('DynamicDashboard - Authenticated user:', {
+          id: wiwsUser.id,
+          name: wiwsUser.name,
+          role: wiwsUser.role,
+          email: wiwsUser.email,
+        });
         
         // Validate user has required properties
         if (!wiwsUser.role) {
-          console.warn('User missing role, defaulting to reception');
+          console.warn('User missing role, defaulting to reception. User object:', wiwsUser);
           navigate('/dashboard/receptionist', { replace: true });
           return;
         }
@@ -41,7 +57,10 @@ export function DynamicDashboard() {
         
         // Get the default dashboard route for the user
         const dashboardRoute = getDefaultDashboardRoute(wiwsUser);
-        // console.log('Redirecting to dashboard:', dashboardRoute);
+        console.log('DynamicDashboard - Redirecting to dashboard:', {
+          role: userRole,
+          route: dashboardRoute,
+        });
         
         // Verify the user can access their assigned dashboard
         if (!canAccessDashboard(wiwsUser, userRole)) {
@@ -65,10 +84,13 @@ export function DynamicDashboard() {
     };
 
     determineUserRole();
-  }, [navigate, user, authLoading]);
+  }, [navigate, user, authLoading, isAuthenticated]);
 
-  // Show loading while auth is loading OR internal loading
-  if (authLoading || loading) {
+  // Show loading while:
+  // 1. Auth is loading
+  // 2. Internal loading state
+  // 3. Authenticated but user data not loaded yet (waiting for API call)
+  if (authLoading || loading || (isAuthenticated && !user)) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center">
   <Card className="w-96 border-0">

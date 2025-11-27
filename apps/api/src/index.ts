@@ -2,50 +2,52 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { prettyJSON } from 'hono/pretty-json';
-import { Env } from './db/index';
-import { createAuth } from './auth';
-import { authMiddleware, optionalAuth, AuthContext } from './middleware/authMiddleware';
-import { servicesRoutes } from './routes/services';
-import { visitsRoutes } from './routes/visits';
-import { usersRoutes } from './routes/users';
-import { analyticsRoutes } from './routes/analytics';
-import { streamRoutes } from './routes/stream';
-import type { ApiUser } from './types/auth';
-
-type AuthType = ReturnType<typeof createAuth>;
+import { Env } from "./db/index";
+import {
+  authMiddleware,
+  optionalAuth,
+  AuthContext,
+} from "./middleware/authMiddleware";
+import { servicesRoutes } from "./routes/services";
+import { visitsRoutes } from "./routes/visits";
+import { usersRoutes } from "./routes/users";
+import { analyticsRoutes } from "./routes/analytics";
+import { streamRoutes } from "./routes/stream";
+import { authRoutes } from "./routes/auth";
+import type { ApiUser } from "./types/auth";
 
 const app = new Hono<{
   Bindings: Env;
   Variables: {
     user: ApiUser | null;
     session: any;
-    auth: AuthType;
+    clerkUser: any;
     auditData?: any;
-  }
+  };
 }>();
 
 // Middleware
-app.use('*', logger());
-app.use('*', prettyJSON());
+app.use("*", logger());
+app.use("*", prettyJSON());
 
 // CORS configuration for auth routes
 app.use(
   "/api/auth/**",
   cors({
     origin: [
-      'http://localhost:5173', // Vite dev server default
-      'http://localhost:5174', // Vite dev server alternative
-      'http://localhost:3000',  // Alternative dev server
-      'http://localhost:4173',  // Vite preview server
-      'http://127.0.0.1:5173',  // Alternative localhost
-      'http://127.0.0.1:5174',  // Alternative localhost
-      'https://wiws.pages.dev',
-      'https://wiws.vercel.app',
-      'https://wiws-frontend.pages.dev',
-      'https://wiws.harjjotsinghh.workers.dev',
-      'https://wiws-prod.harjjotsinghh.workers.dev',
-      'https://wiws-db.harjjotsinghh.workers.dev',
-      'https://wiws-frontend.harjjotsinghh.workers.dev',
+      "http://localhost:5173", // Vite dev server default
+      "http://localhost:5174", // Vite dev server alternative
+      "http://localhost:3000", // Alternative dev server
+      "http://localhost:4173", // Vite preview server
+      "http://127.0.0.1:5173", // Alternative localhost
+      "http://127.0.0.1:5174", // Alternative localhost
+      "https://wiws.pages.dev",
+      "https://wiws.vercel.app",
+      "https://wiws-frontend.pages.dev",
+      "https://wiws.harjjotsinghh.workers.dev",
+      "https://wiws-prod.harjjotsinghh.workers.dev",
+      "https://wiws-db.harjjotsinghh.workers.dev",
+      "https://wiws-frontend.harjjotsinghh.workers.dev",
     ],
     allowHeaders: ["Content-Type", "Authorization", "Cookie"],
     allowMethods: ["POST", "GET", "OPTIONS"],
@@ -56,192 +58,267 @@ app.use(
 );
 
 // CORS for other API routes
-app.use('/api/*', cors({
-  origin: (origin) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return '*';
-    
-    // List of allowed origins
-    const allowedOrigins = [
-      'http://localhost:5173', // Vite dev server default
-      'http://localhost:5174', // Vite dev server alternative
-      'http://localhost:3000',  // Alternative dev server
-      'http://localhost:4173',  // Vite preview server
-      'http://127.0.0.1:5173',  // Alternative localhost
-      'http://127.0.0.1:5174',  // Alternative localhost
-      'https://wiws.pages.dev',
-      'https://wiws.vercel.app',
-      'https://wiws-frontend.pages.dev',
-      'https://wiws.harjjotsinghh.workers.dev',
-      'https://wiws-api.harjjotsinghh.workers.dev',
-      'https://wiws-prod.harjjotsinghh.workers.dev',
-      'https://wiws-db.harjjotsinghh.workers.dev',
-      'https://wiws-frontend.harjjotsinghh.workers.dev'
-    ];
-    
-    // Check if origin is in allowed list
-    if (allowedOrigins.includes(origin)) {
-      return origin;
-    }
-    
-    // For production, you might want to check against environment variables
-    // Return false to deny the request
-    return '*';
-  },
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization', 'Cookie'],
-  credentials: true,
-}));
+app.use(
+  "/api/*",
+  cors({
+    origin: (origin) => {
+      // List of allowed origins (required when using credentials: true)
+      const allowedOrigins = [
+        "http://localhost:5173", // Vite dev server default
+        "http://localhost:5174", // Vite dev server alternative
+        "http://localhost:3000", // Alternative dev server
+        "http://localhost:4173", // Vite preview server
+        "http://127.0.0.1:5173", // Alternative localhost
+        "http://127.0.0.1:5174", // Alternative localhost
+        "https://wiws.pages.dev",
+        "https://wiws.vercel.app",
+        "https://wiws-frontend.pages.dev",
+        "https://wiws.harjjotsinghh.workers.dev",
+        "https://wiws-api.harjjotsinghh.workers.dev",
+        "https://wiws-prod.harjjotsinghh.workers.dev",
+        "https://wiws-db.harjjotsinghh.workers.dev",
+        "https://wiws-frontend.harjjotsinghh.workers.dev",
+      ];
 
-// Middleware to initialize auth instance for each request
-app.use("*", async (c, next) => {
-  const bindings = {
-    DATABASE: c.env.DB,
-    KV: c.env.KV,
-    BETTER_AUTH_SECRET: c.env.BETTER_AUTH_SECRET,
-    BETTER_AUTH_URL: c.env.BETTER_AUTH_URL,
-    FRONTEND_URL: c.env.FRONTEND_URL,
-    ENVIRONMENT: c.env.ENVIRONMENT
-  };
-  
-  const auth = createAuth(bindings, (c.req.raw as any).cf || {});
-  c.set("auth", auth);
-  await next();
-});
+      // Allow requests with no origin (like mobile apps or curl requests) - but can't use wildcard with credentials
+      if (!origin) {
+        // For requests without origin, allow but note that cookies won't work
+        return allowedOrigins[0] || "http://localhost:5173";
+      }
+
+      // Check if origin is in allowed list
+      if (allowedOrigins.includes(origin)) {
+        return origin;
+      }
+
+      // Deny requests from unknown origins when using credentials
+      return null;
+    },
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization", "Cookie"],
+    credentials: true, // Required for cookies to work
+  })
+);
 
 // Enhanced auth middleware for protected routes
-app.use('/api/*', async (c, next) => {
-  // Skip auth for public routes
+// Note: /api/auth/* routes are handled by authRoutes below
+app.use("/api/*", async (c, next) => {
   const path = new URL(c.req.url).pathname;
-  const publicPaths = ['/api/auth/', '/health', '/api/session', '/seed', '/api/services', '/api/visits', '/api/analytics', '/api/users'];
-  
+
+  // Skip auth routes - they handle their own authentication
+  if (path.startsWith("/api/auth/")) {
+    return await next();
+  }
+
+  // Skip auth for public routes
+  const publicPaths = [
+    "/health",
+    "/api/session",
+    "/seed",
+    "/api/services",
+    "/api/visits",
+    "/api/analytics",
+    "/api/users",
+  ];
+
   // Allow stream endpoint to handle its own authentication
-  const isStreamEndpoint = path.startsWith('/api/stream');
-  
-  if (publicPaths.some(publicPath => path.startsWith(publicPath)) || isStreamEndpoint) {
+  const isStreamEndpoint = path.startsWith("/api/stream");
+
+  if (
+    publicPaths.some((publicPath) => path.startsWith(publicPath)) ||
+    isStreamEndpoint
+  ) {
     return optionalAuth(c as AuthContext, next);
   }
-  
+
   // Use strict auth for all other API routes
   return authMiddleware(c as AuthContext, next);
 });
 
-// Handle all auth routes
-app.all("/api/auth/*", async c => {
-  const auth = c.get("auth");
-  return auth.handler(c.req.raw);
-});
-
 // Health check endpoint
-app.get("/health", async c => {
+app.get("/health", async (c) => {
   try {
-    // Test database connection
-    const testQuery = await c.env.DB.prepare("SELECT 1 as test").first();
-    
+    // Test database connection using libsql
+    const { createDbClient } = await import("./db/utils");
+    const db = await createDbClient(c.env);
+    const testQuery = await db.prepare("SELECT 1 as test").first();
+
     return c.json({
       status: "healthy",
       database: testQuery ? "connected" : "not connected",
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   } catch (error: unknown) {
-    return c.json({
-      status: "error",
-      database: "connection failed",
-      error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
-    }, 500);
+    return c.json(
+      {
+        status: "error",
+        database: "connection failed",
+        error: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString(),
+      },
+      500
+    );
   }
 });
 
 // Simple database test endpoint
-app.get("/test-db", async c => {
+app.get("/test-db", async (c) => {
   try {
     // Test if services table exists and get data
-    const servicesTest = await c.env.DB.prepare("SELECT COUNT(*) as count FROM services WHERE 1=1").first();
-    const usersTest = await c.env.DB.prepare("SELECT COUNT(*) as count FROM users WHERE 1=1").first();
-    
+    const { createDbClient } = await import("./db/utils");
+    const db = await createDbClient(c.env);
+    const servicesTest = await db
+      .prepare("SELECT COUNT(*) as count FROM services WHERE 1=1")
+      .first();
+    const usersTest = await db
+      .prepare("SELECT COUNT(*) as count FROM users WHERE 1=1")
+      .first();
+
     return c.json({
       success: true,
       services: servicesTest,
       users: usersTest,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   } catch (error: unknown) {
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
-    }, 500);
+    return c.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString(),
+      },
+      500
+    );
   }
 });
 
 // Seed data endpoint for development
-app.post("/seed", async c => {
+app.post("/seed", async (c) => {
   try {
     // Insert default services
     const services = [
-      { name: 'ITR Filing', description: 'Income Tax Return filing and advisory', est_minutes: 30 },
-      { name: 'GST Registration', description: 'GST registration and compliance', est_minutes: 45 },
-      { name: 'Company Registration', description: 'New company incorporation', est_minutes: 60 },
-      { name: 'Tax Advisory', description: 'Tax planning and consultation', est_minutes: 30 },
-      { name: 'Audit Services', description: 'Financial audit and assurance', est_minutes: 90 },
+      {
+        name: "ITR Filing",
+        description: "Income Tax Return filing and advisory",
+        est_minutes: 30,
+      },
+      {
+        name: "GST Registration",
+        description: "GST registration and compliance",
+        est_minutes: 45,
+      },
+      {
+        name: "Company Registration",
+        description: "New company incorporation",
+        est_minutes: 60,
+      },
+      {
+        name: "Tax Advisory",
+        description: "Tax planning and consultation",
+        est_minutes: 30,
+      },
+      {
+        name: "Audit Services",
+        description: "Financial audit and assurance",
+        est_minutes: 90,
+      },
     ];
-    
+
+    const { createDbClient } = await import("./db/utils");
+    const db = await createDbClient(c.env);
+
     for (const service of services) {
-      await c.env.DB.prepare(`
+      await db
+        .prepare(
+          `
         INSERT OR IGNORE INTO services (name, description, est_minutes, is_active, created_at, updated_at)
         VALUES (?, ?, ?, 1, ?, ?)
-      `).bind(
-        service.name,
-        service.description,
-        service.est_minutes,
-        new Date().toISOString(),
-        new Date().toISOString()
-      ).run();
+      `
+        )
+        .bind(
+          service.name,
+          service.description,
+          service.est_minutes,
+          new Date().toISOString(),
+          new Date().toISOString()
+        )
+        .run();
     }
-    
+
     // Insert test users (in production, these would be created via proper registration)
     const testUsers = [
-      { id: 'reception-001', name: 'Reception Staff', email: 'reception@wiws.com', role: 'reception' },
-      { id: 'pa-001', name: 'PA Assistant', email: 'pa@wiws.com', role: 'pa' },
-      { id: 'consultant-001', name: 'CA Consultant 1', email: 'consultant1@wiws.com', role: 'consultant' },
-      { id: 'consultant-002', name: 'CA Consultant 2', email: 'consultant2@wiws.com', role: 'consultant' },
-      { id: 'admin-001', name: 'Admin User', email: 'admin@wiws.com', role: 'admin' },
-      { id: 'anonymous-001', name: 'Anonymous User', email: 'anonymous@wiws.com', role: 'anonymous' },
+      {
+        id: "reception-001",
+        name: "Reception Staff",
+        email: "reception@wiws.com",
+        role: "reception",
+      },
+      { id: "pa-001", name: "PA Assistant", email: "pa@wiws.com", role: "pa" },
+      {
+        id: "consultant-001",
+        name: "CA Consultant 1",
+        email: "consultant1@wiws.com",
+        role: "consultant",
+      },
+      {
+        id: "consultant-002",
+        name: "CA Consultant 2",
+        email: "consultant2@wiws.com",
+        role: "consultant",
+      },
+      {
+        id: "admin-001",
+        name: "Admin User",
+        email: "admin@wiws.com",
+        role: "admin",
+      },
+      {
+        id: "anonymous-001",
+        name: "Anonymous User",
+        email: "anonymous@wiws.com",
+        role: "anonymous",
+      },
     ];
-    
+
     for (const user of testUsers) {
-      await c.env.DB.prepare(`
+      await db
+        .prepare(
+          `
         INSERT OR IGNORE INTO users (id, name, email, email_verified, role, is_active, created_at, updated_at)
         VALUES (?, ?, ?, 1, ?, 1, ?, ?)
-      `).bind(
-        user.id,
-        user.name,
-        user.email,
-        user.role,
-        new Date().toISOString(),
-        new Date().toISOString()
-      ).run();
+      `
+        )
+        .bind(
+          user.id,
+          user.name,
+          user.email,
+          user.role,
+          new Date().toISOString(),
+          new Date().toISOString()
+        )
+        .run();
     }
-    
+
     return c.json({
       success: true,
-      message: 'Database seeded successfully',
+      message: "Database seeded successfully",
       services: services.length,
       users: testUsers.length,
     });
-    
   } catch (error: unknown) {
-    console.error('Seed error:', error);
-    return c.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    }, 500);
+    console.error("Seed error:", error);
+    return c.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      500
+    );
   }
 });
 
 // Landing page with anonymous login
-app.get("/", async c => {
+app.get("/", async (c) => {
   const html = `
 <!DOCTYPE html>
 <html>
@@ -456,16 +533,16 @@ app.get("/", async c => {
 </body>
 </html>
   `;
-    return c.html(html);
+  return c.html(html);
 });
 
 // Protected route that shows different content based on auth status
-app.get("/protected", optionalAuth, async c => {
-    const user = c.get('user') as ApiUser | null;
-    const session = c.get('session');
+app.get("/protected", optionalAuth, async (c) => {
+  const user = c.get("user") as ApiUser | null;
+  const session = c.get("session");
 
-    if (user && session) {
-        return c.html(`
+  if (user && session) {
+    return c.html(`
             <h2>🔒 Protected Content - You're In!</h2>
             <p>Welcome to the protected area!</p>
             <p><strong>User ID:</strong> ${user.id}</p>
@@ -473,44 +550,44 @@ app.get("/protected", optionalAuth, async c => {
             <p><strong>Role:</strong> ${user.role}</p>
             <p><strong>Email:</strong> ${user.email}</p>
             <p><strong>Session ID:</strong> ${session.id}</p>
-            <p><strong>Active:</strong> ${user.isActive ? 'Yes' : 'No'}</p>
-            <p><strong>Anonymous:</strong> ${user.isAnonymous ? 'Yes' : 'No'}</p>
+            <p><strong>Active:</strong> ${user.isActive ? "Yes" : "No"}</p>
+            <p><strong>Anonymous:</strong> ${user.isAnonymous ? "Yes" : "No"}</p>
             <p><strong>Created At:</strong> ${new Date(user.createdAt).toLocaleString()}</p>
             <p>This content is only visible to authenticated users (including anonymous ones)!</p>
         `);
-    } else {
-        return c.html(
-            `
+  } else {
+    return c.html(
+      `
             <h2>❌ Access Denied</h2>
             <p>You need to be logged in to see this content.</p>
             <p>Go back and login anonymously first!</p>
         `,
-            401
-        );
-    }
+      401
+    );
+  }
 });
 
 // Health check endpoint
-app.get("/health", c => {
-    return c.json({ 
-        status: "ok", 
-        timestamp: new Date().toISOString(),
-        message: 'wiws API - Walk-in Workflow System',
-        version: '1.0.0',
-        environment: c.env.ENVIRONMENT || 'development',
-    });
+app.get("/health", (c) => {
+  return c.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    message: "wiws API - Walk-in Workflow System",
+    version: "1.0.0",
+    environment: c.env.ENVIRONMENT || "development",
+  });
 });
 
 // Session info endpoint with enhanced user information
-app.get('/api/session', optionalAuth, (c) => {
-  const session = c.get('session');
-  const user = c.get('user') as ApiUser | null;
-  
+app.get("/api/session", optionalAuth, (c) => {
+  const session = c.get("session");
+  const user = c.get("user") as ApiUser | null;
+
   if (!user) {
-    return c.json({ 
-      authenticated: false, 
-      user: null, 
-      session: null 
+    return c.json({
+      authenticated: false,
+      user: null,
+      session: null,
     });
   }
 
@@ -524,41 +601,51 @@ app.get('/api/session', optionalAuth, (c) => {
       isActive: user.isActive,
       isAnonymous: user.isAnonymous,
     },
-    session: session ? {
-      id: session.id,
-      expiresAt: session.expiresAt,
-    } : null,
+    session: session
+      ? {
+          userId: session.userId,
+          role: session.role,
+        }
+      : null,
   });
 });
 
 // API routes
-app.route('/api/services', servicesRoutes);
-app.route('/api/visits', visitsRoutes);
-app.route('/api/users', usersRoutes);
-app.route('/api/analytics', analyticsRoutes);
-app.route('/api/stream', streamRoutes);
+app.route("/api/auth", authRoutes);
+app.route("/api/services", servicesRoutes);
+app.route("/api/visits", visitsRoutes);
+app.route("/api/users", usersRoutes);
+app.route("/api/analytics", analyticsRoutes);
+app.route("/api/stream", streamRoutes);
 
 // Scheduled event handler for daily token reset
-app.get('/cron/reset-tokens', async (c) => {
+app.get("/cron/reset-tokens", async (c) => {
   // This endpoint will be called by Cloudflare Workers cron trigger
   try {
-    const today = new Date().toISOString().split('T')[0];
-    const stmt = c.env.DB.prepare(
-      'INSERT OR REPLACE INTO token_counter (id, date, counter, updated_at) VALUES (1, ?, 0, ?)'
-    );
-    await stmt.bind(today, new Date().toISOString()).run();
-    
+    const { createDbClient } = await import("./db/utils");
+    const db = await createDbClient(c.env);
+    const today = new Date().toISOString().split("T")[0];
+    await db
+      .prepare(
+        "INSERT OR REPLACE INTO token_counter (id, date, counter, updated_at) VALUES (1, ?, 0, ?)"
+      )
+      .bind(today, new Date().toISOString())
+      .run();
+
     return c.json({
       success: true,
-      message: 'Token counter reset successfully',
+      message: "Token counter reset successfully",
       date: today,
     });
   } catch (error) {
-    console.error('Token reset error:', error);
-    return c.json({
-      success: false,
-      error: 'Failed to reset token counter',
-    }, 500);
+    console.error("Token reset error:", error);
+    return c.json(
+      {
+        success: false,
+        error: "Failed to reset token counter",
+      },
+      500
+    );
   }
 });
 

@@ -1,8 +1,8 @@
-import { ReactNode, useEffect } from 'react';
+import { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '~/contexts/AuthContext';
 import { wiwsUser, UserRole } from '~/types/auth';
-import { canAccessDashboard, getDefaultDashboardRoute } from '~/lib/permissions';
+import { getDefaultDashboardRoute } from '~/lib/permissions';
 import { Loader2 } from 'lucide-react';
 import { Card, CardContent } from '~/components/ui/card';
 import toast from 'react-hot-toast';
@@ -20,7 +20,7 @@ export function ProtectedRoute({
   requireAuth = true,
   redirectTo = '/login' 
 }: ProtectedRouteProps) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isAuthenticated } = useAuth();
   const location = useLocation();
 
   // Show loading while authentication status is being determined
@@ -39,8 +39,8 @@ export function ProtectedRoute({
   }
 
   // Redirect to login if authentication is required but user is not authenticated
-  if (requireAuth && !user && !isLoading) {
-    // console.log('ProtectedRoute: Redirecting to login - no user and not loading');
+  // Use isAuthenticated from Clerk (more reliable than just checking user)
+  if (requireAuth && !isAuthenticated && !isLoading) {
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
@@ -48,11 +48,21 @@ export function ProtectedRoute({
   if (user && allowedRoles) {
     const wiwsUser = user as wiwsUser;
     
+    // Check if user has a role
+    if (!wiwsUser.role) {
+      console.warn('User missing role, redirecting to default dashboard');
+      const defaultRoute = '/dashboard/receptionist';
+      return <Navigate to={defaultRoute} replace />;
+    }
+
     // Check if user's role is in the allowed roles list
     if (!allowedRoles.includes(wiwsUser.role)) {
       // Redirect to user's default dashboard instead of showing error
       const defaultRoute = getDefaultDashboardRoute(wiwsUser);
       console.warn(`User with role ${wiwsUser.role} attempted to access restricted route. Redirecting to ${defaultRoute}`);
+      console.log('Allowed roles:', allowedRoles);
+      console.log('User role:', wiwsUser.role);
+      console.log('Default route:', defaultRoute);
       toast.error('You do not have permission to access this page.')
       return <Navigate to={defaultRoute} replace />;
     }

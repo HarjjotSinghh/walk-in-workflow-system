@@ -1,6 +1,6 @@
 import { UserRole } from '~/types/auth';
-import api from './api';
-import type { User } from 'better-auth';
+import api from "./axios";
+import type { wiwsUser } from "~/types/auth";
 
 export interface LoginRequest {
   email: string;
@@ -10,7 +10,7 @@ export interface LoginRequest {
 export interface LoginResponse {
   success: boolean;
   data: {
-    user: User;
+    user: wiwsUser;
     sessionToken: string;
   };
   message: string;
@@ -25,55 +25,41 @@ export interface RegisterRequest {
 
 // Description: User login
 // Endpoint: POST /api/auth/login
-// Request: { email: string, password: string }
-// Response: { success: boolean, data: { user: User, sessionToken: string }, message: string }
-export const login = async (credentials: LoginRequest): Promise<LoginResponse> => {
+// Note: This is now handled by Clerk on the frontend, but kept for API compatibility
+export const login = async (
+  credentials: LoginRequest
+): Promise<LoginResponse> => {
   try {
-    const response = await api.post('/api/auth/login', credentials);
-    
-    // Store auth data in localStorage
-    localStorage.setItem('wiws_auth_token', response.data.sessionToken);
-    localStorage.setItem('wiws_user', JSON.stringify(response.data.user));
-    
+    const response = await api.post("/auth/login", credentials);
     return response as unknown as LoginResponse;
   } catch (error) {
-    console.error('Login error:', error);
+    console.error("Login error:", error);
     throw error;
   }
 };
 
 // Description: User registration (Admin only)
 // Endpoint: POST /api/auth/register
-// Request: { email: string, name: string, role: string, password: string }
-// Response: { success: boolean, data: { user: User }, message: string }
+// Note: This creates users in Clerk and syncs to local DB
 export const register = async (userData: RegisterRequest) => {
   try {
-    const response = await api.post('/api/auth/register', userData);
+    const response = await api.post("/auth/register", userData);
     return response;
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error("Registration error:", error);
     throw error;
   }
 };
 
 // Description: User logout
 // Endpoint: POST /api/auth/logout
-// Request: {}
-// Response: { success: boolean, message: string }
+// Note: Clerk handles logout on the frontend, this is for API cleanup
 export const logout = async () => {
   try {
-    const response = await api.post('/api/auth/logout');
-    
-    // Clear auth data from localStorage
-    localStorage.removeItem('wiws_auth_token');
-    localStorage.removeItem('wiws_user');
-    
+    const response = await api.post("/auth/logout");
     return response;
   } catch (error) {
-    console.error('Logout error:', error);
-    // Clear auth data even if API call fails
-    localStorage.removeItem('wiws_auth_token');
-    localStorage.removeItem('wiws_user');
+    console.error("Logout error:", error);
     throw error;
   }
 };
@@ -81,37 +67,44 @@ export const logout = async () => {
 // Description: Get current user info
 // Endpoint: GET /api/auth/me
 // Request: {}
-// Response: { success: boolean, data: { user: User } }
-export const getCurrentUser = async (): Promise<{ user: User }> => {
+// Response: { success: boolean, data: { user: wiwsUser } }
+export const getCurrentUser = async (): Promise<{ user: wiwsUser }> => {
   try {
-    const response = await api.get('/api/auth/me');
+    const response = await api.get("/auth/me");
     return response.data;
   } catch (error) {
-    console.error('Get current user error:', error);
+    console.error("Get current user error:", error);
     throw error;
   }
 };
 
+// Note: The following helper functions are no longer needed with Clerk
+// as Clerk manages sessions automatically. They are kept for backward compatibility
+// but should not be used in new code.
+
 // Helper function to check if user is authenticated
+// Note: Use Clerk's useAuth hook instead
 export const isAuthenticated = (): boolean => {
-  const token = localStorage.getItem('wiws_auth_token');
-  const user = localStorage.getItem('wiws_user');
-  return !!(token && user);
+  // This is a placeholder - actual auth state comes from Clerk
+  return false;
 };
 
 // Helper function to get stored user data
-export const getStoredUser = (): User | null => {
-  const userData = localStorage.getItem('wiws_user');
-  return userData ? JSON.parse(userData) : null;
+// Note: Use Clerk's useUser hook instead
+export const getStoredUser = (): wiwsUser | null => {
+  // This is a placeholder - actual user data comes from Clerk
+  return null;
 };
 
 // Helper function to get stored auth token
+// Note: Use Clerk's getToken() from useAuth hook instead
 export const getStoredToken = (): string | null => {
-  return localStorage.getItem('wiws_auth_token');
+  // This is a placeholder - actual token comes from Clerk
+  return null;
 };
 
 // Helper function to clear auth data
+// Note: Clerk handles this automatically on signOut
 export const clearAuthData = () => {
-  localStorage.removeItem('wiws_auth_token');
-  localStorage.removeItem('wiws_user');
+  // Clerk handles session cleanup automatically
 };

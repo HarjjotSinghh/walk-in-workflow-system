@@ -285,6 +285,28 @@ try {
 - Set role in Clerk Dashboard under Public Metadata
 - Role must be in: admin, pa, consultant, reception
 
+### Email Verification Issues
+
+#### Not receiving verification emails
+1. **Check spam folder** - Verification emails may be filtered
+2. **Check Clerk email settings**:
+   - Go to https://dashboard.clerk.com
+   - Navigate to: **User & Authentication** > **Email, Phone, Username**
+   - Under **Email verification**, check if it's set to "Required"
+   - Verify email provider is configured correctly
+
+#### Disable email verification (Development)
+1. Go to https://dashboard.clerk.com
+2. Navigate to: **User & Authentication** > **Email, Phone, Username**
+3. Under **Email verification**, change from "Required" to **"Optional"** or **"Disabled"**
+4. Save changes
+5. Users can now sign up without email verification
+
+#### Allow sign-in without verification (Code)
+- Set environment variable: `VITE_ALLOW_SIGNIN_WITHOUT_VERIFICATION=true`
+- Or the code automatically allows this in development mode (`import.meta.env.DEV`)
+- **Warning**: This reduces security - only use in development
+
 ### CORS errors
 - Add frontend URL to CORS origins in API
 - Enable credentials: true

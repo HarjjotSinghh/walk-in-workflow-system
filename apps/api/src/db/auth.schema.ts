@@ -45,42 +45,46 @@ export const user = sqliteTable("user", {
 });
 
 export const session = sqliteTable("session", {
-    id: text("id").primaryKey(),
-    expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
-    token: text("token").notNull().unique(),
-    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
-    ipAddress: text("ip_address"),
-    userAgent: text("user_agent"),
-    userId: text("user_id")
-        .notNull()
-        .references(() => users.id, { onDelete: "cascade" }),
-    timezone: text("timezone"),
-    city: text("city"),
-    country: text("country"),
-    region: text("region"),
-    regionCode: text("region_code"),
-    colo: text("colo"),
-    latitude: text("latitude"),
-    longitude: text("longitude"),
+  id: text("id").primaryKey(),
+  expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+  token: text("token").notNull().unique(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  timezone: text("timezone"),
+  city: text("city"),
+  country: text("country"),
+  region: text("region"),
+  regionCode: text("region_code"),
+  colo: text("colo"),
+  latitude: text("latitude"),
+  longitude: text("longitude"),
 });
 
 export const account = sqliteTable("account", {
-    id: text("id").primaryKey(),
-    accountId: text("account_id").notNull(),
-    providerId: text("provider_id").notNull(),
-    userId: text("user_id")
-        .notNull()
-        .references(() => users.id, { onDelete: "cascade" }),
-    accessToken: text("access_token"),
-    refreshToken: text("refresh_token"),
-    idToken: text("id_token"),
-    accessTokenExpiresAt: integer("access_token_expires_at", { mode: "timestamp" }),
-    refreshTokenExpiresAt: integer("refresh_token_expires_at", { mode: "timestamp" }),
-    scope: text("scope"),
-    password: text("password"),
-    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-    updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  id: text("id").primaryKey(),
+  accountId: text("account_id").notNull(),
+  providerId: text("provider_id").notNull(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  idToken: text("id_token"),
+  accessTokenExpiresAt: integer("access_token_expires_at", {
+    mode: "timestamp",
+  }),
+  refreshTokenExpiresAt: integer("refresh_token_expires_at", {
+    mode: "timestamp",
+  }),
+  scope: text("scope"),
+  password: text("password"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
 
 export const verification = sqliteTable("verification", {
@@ -115,9 +119,9 @@ export const visits = sqliteTable("visits", {
     status: text("status", { 
         enum: ['new', 'approved', 'denied', 'in_session', 'completed', 'cancelled'] 
     }).notNull().default('new'),
-    assignedConsultantId: text("assigned_consultant_id").references(() => users.id),
-    paId: text("pa_id").references(() => users.id),
-    receptionId: text("reception_id").notNull().references(() => users.id),
+    assignedConsultantId: text("assigned_consultant_id").references(() => user.id),
+    paId: text("pa_id").references(() => user.id),
+    receptionId: text("reception_id").notNull().references(() => user.id),
     notes: text("notes"),
     sessionNotes: text("session_notes"),
     waitTimeMinutes: integer("wait_time_minutes"),
@@ -133,7 +137,7 @@ export const audit = sqliteTable("audit", {
     entity: text("entity").notNull(),
     entityId: text("entity_id").notNull(),
     action: text("action").notNull(),
-    userId: text("user_id").notNull().references(() => users.id),
+    userId: text("user_id").notNull().references(() => user.id),
     oldValues: text("old_values"),
     newValues: text("new_values"),
     ipAddress: text("ip_address"),

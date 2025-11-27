@@ -1,6 +1,7 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
-import { Navigate, useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
+import { Navigate } from "react-router-dom"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
@@ -20,6 +21,7 @@ import {
   LightbulbOffIcon
 } from "lucide-react"
 import { useAuth } from "~/contexts/AuthContext"
+import { getDefaultDashboardRoute } from "~/lib/permissions"
 import toast from "react-hot-toast"
 
 type LoginForm = {
@@ -29,9 +31,34 @@ type LoginForm = {
 
 export function Login() {
   const [loading, setLoading] = useState(false)
-  const { login } = useAuth()
+  const { login, isAuthenticated, isLoading, user } = useAuth()
   const navigate = useNavigate()
   const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>()
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && user) {
+      const defaultRoute = getDefaultDashboardRoute(user);
+      navigate(defaultRoute, { replace: true });
+    }
+  }, [isAuthenticated, isLoading, user, navigate]);
+
+  // Show loading while checking auth status
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect if already authenticated
+  if (isAuthenticated && user) {
+    const defaultRoute = getDefaultDashboardRoute(user);
+    return <Navigate to={defaultRoute} replace />;
+  }
 
   const onSubmit = async (data: LoginForm) => {
     try {
@@ -40,12 +67,7 @@ export function Login() {
       toast.success(
         "Logged in successfully",
       )
-      navigate(`${import.meta.env.VITE_BASE_URL}/dashboard`, {
-        replace: true
-      })
-      window.location.href = `${import.meta.env.VITE_BASE_URL}/dashboard`
-      return <Navigate to={`${import.meta.env.VITE_BASE_URL}/dashboard`} replace />
-      // navigate("/dashboard", { replace: true })
+      navigate("/dashboard", { replace: true })
     } catch (error: unknown) {
       console.error("Login error:", error instanceof Error ? error?.message : 'Unknown Login Error: ')
       toast.error(

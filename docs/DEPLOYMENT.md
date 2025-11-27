@@ -70,53 +70,17 @@ turso db show wiws-prod
 
 ### 2. Apply Migrations
 
-You have several options for applying migrations:
-
-#### Option A: Using Turso CLI (Recommended for SQL files)
-
 ```bash
 cd apps/api
 
-# Apply migrations one by one in order
-turso db execute wiws-prod --file migrations/0001_initial_schema.sql
-turso db execute wiws-prod --file migrations/0002_better_auth_tables.sql
-turso db execute wiws-prod --file migrations/0003_fix_foreign_keys.sql
-turso db execute wiws-prod --file migrations/0004_fix_account_user_foreign_key.sql
-
-# Or use the shell method
-turso db shell wiws-prod < migrations/0001_initial_schema.sql
-```
-
-#### Option B: Using Migration Scripts
-
-```bash
-cd apps/api
-
-# Set environment variables for production
-export TURSO_DB_URL="libsql://wiws-prod-<your-org>.turso.io"
-export TURSO_DB_AUTH_TOKEN="your-auth-token"
-
-# Run migration script
-node scripts/run-migration.js
-
-# Or use the shell script
-chmod +x scripts/run-migration.sh
-./scripts/run-migration.sh wiws-prod
-```
-
-#### Option C: Using Drizzle Kit (For generated migrations)
-
-```bash
-cd apps/api
-
-# Generate migrations from schema changes
+# Generate migration files (if you have schema changes)
 pnpm db:generate
 
-# Apply migrations using Drizzle (requires TURSO_DB_URL and TURSO_DB_AUTH_TOKEN set)
-# Note: Drizzle Kit with Turso support may require additional configuration
-export TURSO_DB_URL="libsql://wiws-prod-<your-org>.turso.io"
-export TURSO_DB_AUTH_TOKEN="your-auth-token"
-pnpm drizzle-kit push
+# Apply migrations to production database
+# Note: You'll need to use Turso CLI or a migration script
+turso db shell wiws-prod < migrations/0001_initial_schema.sql
+turso db shell wiws-prod < migrations/0002_better_auth_tables.sql
+# ... apply all migrations in order
 ```
 
 ### 3. Verify Database Connection
@@ -125,29 +89,8 @@ pnpm drizzle-kit push
 # Test connection
 turso db shell wiws-prod
 
-# Run test queries
+# Run a test query
 SELECT COUNT(*) FROM users;
-SELECT COUNT(*) FROM visits;
-SELECT COUNT(*) FROM services;
-
-# List all tables
-.tables
-
-# Exit shell
-.exit
-```
-
-### 4. Seed Initial Data (Optional)
-
-After migrations, you may want to seed initial data:
-
-```bash
-# Using the API seed endpoint (after API is deployed)
-curl -X POST https://your-api-url.workers.dev/seed
-
-# Or manually via Turso shell
-turso db shell wiws-prod
-# Then run your seed SQL statements
 ```
 
 ---
@@ -195,7 +138,7 @@ If you need webhook support:
 
 ### Step 1: Update Production Configuration
 
-**⚠️ Important:** For production, it's recommended to use Cloudflare Workers secrets instead of hardcoding values in `wrangler.json`. However, if you need to set non-sensitive values, edit `apps/api/wrangler.json` and update the `env.production` section:
+Edit `apps/api/wrangler.json` and update the `env.production` section:
 
 ```json
 {
@@ -247,7 +190,7 @@ pnpm type-check
 # Deploy to production
 pnpm deploy
 
-# Or manually (note: wrangler.json is used, not wrangler.toml):
+# Or manually:
 wrangler deploy --env production --minify
 ```
 

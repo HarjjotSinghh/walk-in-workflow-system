@@ -1,5 +1,5 @@
 import { VisitStatus } from '~/types/auth';
-import api from './api';
+import api from "./axios";
 
 export interface Visitor {
   _id: string;
@@ -7,7 +7,7 @@ export interface Visitor {
   name: string;
   phone: string;
   service: string;
-  status: 'new' | 'approved' | 'in-session' | 'completed' | 'denied';
+  status: "new" | "approved" | "in-session" | "completed" | "denied";
   createdAt: string;
   updatedAt: string;
   assignedConsultant?: string;
@@ -36,7 +36,7 @@ export interface UpdateVisitRequest {
 // Response: { success: boolean, data: { visits: Visitor[] } }
 export const getTodayVisitors = async () => {
   try {
-    const response = await api.get('/api/visits/today');
+    const response = await api.get("/visits/today");
     return {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       visitors: response.data.visits.map((visit: any) => ({
@@ -51,11 +51,11 @@ export const getTodayVisitors = async () => {
         assignedConsultant: visit.assignedConsultant,
         notes: visit.notes,
         waitTime: visit.waitTime,
-        sessionDuration: visit.sessionDuration
-      }))
+        sessionDuration: visit.sessionDuration,
+      })),
     };
   } catch (error) {
-    console.error('Get today visitors error:', error);
+    console.error("Get today visitors error:", error);
     throw error;
   }
 };
@@ -67,18 +67,18 @@ export const getTodayVisitors = async () => {
 export const createVisitor = async (data: CreateVisitRequest) => {
   try {
     // Get current user as reception_id (from localStorage)
-    const currentUser = JSON.parse(localStorage.getItem('wiws_user') || '{}');
-    const reception_id = currentUser.id || 'reception-001'; // Use the seeded reception user ID as fallback
-    
-    const response = await api.post('/api/visits', {
+    const currentUser = JSON.parse(localStorage.getItem("wiws_user") || "{}");
+    const reception_id = currentUser.id || "reception-001"; // Use the seeded reception user ID as fallback
+
+    const response = await api.post("/visits", {
       name: data.name,
       phone: data.phone,
       service_id: data.serviceId,
       notes: data.notes,
       reception_id: reception_id,
-      serviceId: data.serviceId
+      serviceId: data.serviceId,
     } as CreateVisitRequest);
-    
+
     return {
       visitor: {
         _id: response.data.visit.id.toString(),
@@ -90,13 +90,13 @@ export const createVisitor = async (data: CreateVisitRequest) => {
         createdAt: response.data.visit.createdAt,
         updatedAt: response.data.visit.createdAt,
         notes: response.data.visit.notes,
-        waitTime: 0
+        waitTime: 0,
       },
       success: !!response.data,
-      message: response.statusText
+      message: response.statusText,
     };
   } catch (error) {
-    console.error('Create visitor error:', error);
+    console.error("Create visitor error:", error);
     throw error;
   }
 };
@@ -105,35 +105,38 @@ export const createVisitor = async (data: CreateVisitRequest) => {
 // Endpoint: PUT /api/visits/:id/status
 // Request: { status: string, assigned_consultant_id?: string, pa_id?: string, notes?: string, session_notes?: string }
 // Response: { success: boolean, data: { visit: Visitor }, message: string }
-export const updateVisitorStatus = async (id: string, data: { status: string; assignedConsultantId?: string; notes?: string }) => {
+export const updateVisitorStatus = async (
+  id: string,
+  data: { status: string; assignedConsultantId?: string; notes?: string }
+) => {
   try {
     // Get current user for pa_id or consultant tracking
-    const currentUser = JSON.parse(localStorage.getItem('wiws_user') || '{}');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const currentUser = JSON.parse(localStorage.getItem("wiws_user") || "{}");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateData: any = {
       status: data.status,
-      notes: data.notes
+      notes: data.notes,
     };
-    
+
     // If assigning consultant, include consultant ID
-    if (data.assignedConsultantId && data.status === 'approved') {
+    if (data.assignedConsultantId && data.status === "approved") {
       updateData.assigned_consultant_id = data.assignedConsultantId;
       updateData.pa_id = currentUser.id;
     }
-    
-    const response = await api.put(`/api/visits/${id}/status`, updateData);
-    
+
+    const response = await api.put(`/visits/${id}/status`, updateData);
+
     return {
       visitor: {
         _id: response.data.visit.id.toString(),
         ...response.data.visit,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       },
       success: !!response.data,
-      message: response.statusText
+      message: response.statusText,
     };
   } catch (error) {
-    console.error('Update visitor status error:', error);
+    console.error("Update visitor status error:", error);
     throw error;
   }
 };
@@ -144,7 +147,7 @@ export const updateVisitorStatus = async (id: string, data: { status: string; as
 // Response: { success: boolean, data: { visits: Visitor[] } }
 export const getPendingApprovals = async () => {
   try {
-    const response = await api.get('/api/visits/pending-approval');
+    const response = await api.get("/visits/pending-approval");
     return {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       visitors: response.data.visits.map((visit: any) => ({
@@ -153,14 +156,16 @@ export const getPendingApprovals = async () => {
         name: visit.name,
         phone: visit.phone,
         service: visit.service,
-        status: 'new',
+        status: "new",
         createdAt: visit.createdAt,
         updatedAt: visit.createdAt,
-        waitTime: Math.floor((new Date().getTime() - new Date(visit.createdAt).getTime()) / 60000)
-      }))
+        waitTime: Math.floor(
+          (new Date().getTime() - new Date(visit.createdAt).getTime()) / 60000
+        ),
+      })),
     };
   } catch (error) {
-    console.error('Get pending approvals error:', error);
+    console.error("Get pending approvals error:", error);
     throw error;
   }
 };

@@ -6,20 +6,6 @@
   ],
   "main": "src/index.ts",
   "name": "wiws",
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_id": "f79ca3cd-5940-4059-9851-7034a824e0b6",
-      "database_name": "wiws",
-      "migrations_dir": "./migrations"
-    },
-    {
-      "binding": "DB_PROD",
-      "database_id": "6feb589a-d559-4953-b38a-5885c1af311a",
-      "database_name": "wiws-prod",
-      "migrations_dir": "./migrations"
-    }
-  ],
   "kv_namespaces": [
     {
       "binding": "KV",
@@ -32,20 +18,6 @@
   },
   "env": {
     "production": {
-      "d1_databases": [
-        {
-          "binding": "DB",
-          "database_id": "6feb589a-d559-4953-b38a-5885c1af311a",
-          "database_name": "wiws-prod",
-          "migrations_dir": "./migrations"
-        },
-        {
-          "binding": "DB_PROD",
-          "database_id": "6feb589a-d559-4953-b38a-5885c1af311a",
-          "database_name": "wiws-prod",
-          "migrations_dir": "./migrations"
-        }
-      ],
       "kv_namespaces": [
         {
           "binding": "KV",
@@ -53,8 +25,8 @@
         }
       ],
       "vars": {
-        "BETTER_AUTH_SECRET": "4a08b0e8dea826ab9187dd28de3c6fc35a633b05af6a3b53523f17918a5730de",
-        "BETTER_AUTH_URL": "https://wiws-api.harjjotsinghh.workers.dev",
+        "CLERK_SECRET_KEY": "sk_live_YOUR_CLERK_SECRET_KEY",
+        "CLERK_PUBLISHABLE_KEY": "pk_live_YOUR_CLERK_PUBLISHABLE_KEY",
         "ENVIRONMENT": "production",
         "FRONTEND_URL": "https://wiws.pages.dev",
         "TURSO_DB_AUTH_TOKEN": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NTYzMzAxNDcsImlkIjoiMDYzNjdhNjYtOWFiZi00MGI0LWI3ZGMtMTliZGRhZmZlZmZjIiwicmlkIjoiYjQzYWFmYWItNzA5MS00NTUyLTlmZWEtODc2MmMwODI2ZmUxIn0.cQsfxukxSiN9w0XiIe1hBhbYwCHTINZmTfYobh-EgWUlenIBEOg5JN20qEWzFWgV5jazjAKSTFkhfdYk9tuvDA",
@@ -68,8 +40,9 @@
     ]
   },
   "vars": {
-    "BETTER_AUTH_SECRET": "4a08b0e8dea826ab9187dd28de3c6fc35a633b05af6a3b53523f17918a5730de",
-    "BETTER_AUTH_URL": "http://localhost:8787",
+    "CLERK_PUBLISHABLE_KEY": "pk_test_ZGFzaGluZy1idWxsZG9nLTY3LmNsZXJrLmFjY291bnRzLmRldiQ",
+    "CLERK_SECRET_KEY": "sk_test_nyenqYfeJ7CmsfwFenCFx537dDQ6tNkGuFxLNf2l47",
+    "CLERK_WEBHOOK_SECRET": "whsec_YUxM73iiE9pkpAxNrHsv4OlruVICe6Ks",
     "ENVIRONMENT": "development",
     "FRONTEND_URL": "http://localhost:5174",
     "TURSO_DB_AUTH_TOKEN": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NTYzMzAxNDcsImlkIjoiMDYzNjdhNjYtOWFiZi00MGI0LWI3ZGMtMTliZGRhZmZlZmZjIiwicmlkIjoiYjQzYWFmYWItNzA5MS00NTUyLTlmZWEtODc2MmMwODI2ZmUxIn0.cQsfxukxSiN9w0XiIe1hBhbYwCHTINZmTfYobh-EgWUlenIBEOg5JN20qEWzFWgV5jazjAKSTFkhfdYk9tuvDA",

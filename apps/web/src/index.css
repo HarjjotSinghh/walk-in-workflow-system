@@ -272,6 +272,10 @@ body {
     @apply border border-solid border-red-500;
   } */
   body {
-    @apply bg-background text-foreground font-tiktok-sans;
+    @apply bg-background text-foreground;
   }
+}
+
+body {
+  font-family: 'TikTok Sans', sans-serif;
 }

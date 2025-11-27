@@ -2,7 +2,8 @@ import { hc } from "hono/client";
 import App from "./index";
 import { env } from "cloudflare:workers";
 
-const envBase = env.BETTER_AUTH_URL || "http://localhost:8787";
+// Use FRONTEND_URL or default to localhost for development
+const envBase = env.FRONTEND_URL || "http://localhost:8787";
 
 export const client = hc<typeof App>(envBase, {
   init: {

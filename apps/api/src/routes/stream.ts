@@ -289,7 +289,7 @@ streamRoutes.post('/notify', async (c) => {
     const body = await c.req.json();
     const notificationSchema = z.object({
       message: z.string(),
-      type: z.enum(['info', 'success', 'warning', 'error']).default('info'),
+      type: z.enum(["info", "success", "warning", "error"]).default("info"),
       target_roles: z.array(z.string()).optional(),
       target_users: z.array(z.string()).optional(),
       duration: z.number().optional().default(5000),
@@ -298,7 +298,7 @@ streamRoutes.post('/notify', async (c) => {
     const notification = notificationSchema.parse(body);
 
     const event = {
-      type: 'notification',
+      type: "notification",
       data: {
         message: notification.message,
         type: notification.type,
@@ -309,24 +309,24 @@ streamRoutes.post('/notify', async (c) => {
       target_users: notification.target_users,
     };
 
-    // Reuse broadcast logic
-    const broadcastResponse = await fetch(`${c.env.BETTER_AUTH_URL || 'http://localhost:8787'}/api/stream/broadcast`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    // Reuse broadcast logic - construct URL from request origin
+    const baseUrl = new URL(c.req.url).origin;
+    const broadcastResponse = await fetch(`${baseUrl}/api/stream/broadcast`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(event),
     });
 
     if (!broadcastResponse.ok) {
-      throw new Error('Failed to broadcast notification');
+      throw new Error("Failed to broadcast notification");
     }
 
-    const result = await broadcastResponse.json() as any;
+    const result = (await broadcastResponse.json()) as any;
     return c.json({
       success: true,
-      message: 'Notification sent successfully',
+      message: "Notification sent successfully",
       ...result,
     });
-
   } catch (error) {
     console.error('Notification error:', error);
     if (error instanceof z.ZodError) {
