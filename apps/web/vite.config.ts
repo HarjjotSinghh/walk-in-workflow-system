@@ -36,6 +36,7 @@ export default defineConfig(({ mode }) => {
       },
       allowedHosts: [
         "localhost",
+        "wiws.verbflo.com",
         "wiws.pages.dev",
         "wiws-frontend.pages.dev",
         "wiws.harjjotsinghh.workers.dev",
