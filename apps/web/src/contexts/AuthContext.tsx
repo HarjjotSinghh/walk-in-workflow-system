@@ -1,8 +1,8 @@
 import { createContext, useContext, ReactNode } from "react";
 import { authClient, useSession } from "../lib/auth-client";
-import { Session, User } from "better-auth";
+import { Session } from "better-auth";
 import { wiwsUser, UserRole } from "../types/auth";
-import api from "~/api/api";
+import api from "~/api/axios";
 
 type AuthContextType = {
   user: wiwsUser | null;
@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.error('AuthProvider session error:', error);
   }
   
-  const user = session?.user as wiwsUser | null;
+  const user = session?.user as unknown as wiwsUser | null;
   const isAuthenticated = !!user;
 
   const login = async (email: string, password: string) => {
