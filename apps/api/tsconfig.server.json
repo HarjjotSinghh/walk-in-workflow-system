@@ -12,9 +12,21 @@
     "skipLibCheck": true,
     "strict": true,
     "resolveJsonModule": true,
-    "types": ["node"]
+    "types": ["node"],
+    "typeRoots": ["./node_modules/@types", "./src/types"]
   },
-  "include": ["src/server.ts", "src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
+  "include": [
+    "src/server.ts",
+    "src/**/*",
+    "src/types/**/*.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "src/api.ts",
+    "src/db/execute.ts"
+  ]
 }
 

@@ -43,6 +43,10 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: 4173,
       },
+      env_production: {
+        NODE_ENV: 'production',
+        PORT: 4173,
+      },
       error_file: './logs/web-error.log',
       out_file: './logs/web-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
