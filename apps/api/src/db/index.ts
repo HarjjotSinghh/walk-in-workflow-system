@@ -48,12 +48,15 @@ export async function createLibsqlClient(env: Env) {
     authToken: authToken,
   });
 
-  // Enable foreign keys for SQLite/libsql
-  try {
-    await client.execute("PRAGMA foreign_keys = ON");
-  } catch (error) {
-    // Log but don't fail - some databases might not support this or it might already be enabled
-    console.warn("Failed to enable foreign keys:", error);
+  // Enable foreign keys for local SQLite only
+  // Turso (libsql://) has foreign keys enabled by default and doesn't support PRAGMA statements
+  if (!dbUrl.startsWith("libsql://")) {
+    try {
+      await client.execute("PRAGMA foreign_keys = ON");
+    } catch (error) {
+      // Log but don't fail - some databases might not support this or it might already be enabled
+      console.warn("Failed to enable foreign keys:", error);
+    }
   }
 
   return client;

@@ -11,11 +11,24 @@ export function createDb() {
 export async function createDbClient(env: Env) {
   const client = await createLibsqlClient(env);
 
-  // Ensure foreign keys are enabled for this connection
+  // Ensure foreign keys are enabled for local SQLite only
+  // Turso (libsql://) has foreign keys enabled by default and doesn't support PRAGMA statements
+  const dbUrl = env.TURSO_DB_URL;
+  if (dbUrl && !dbUrl.startsWith("libsql://")) {
+    try {
+      await client.execute("PRAGMA foreign_keys = ON");
+    } catch (error) {
+      console.warn("Failed to enable foreign keys:", error);
+    }
+  }
+
+  // Test connection with a simple query (using correct libsql format)
   try {
-    await client.execute("PRAGMA foreign_keys = ON");
+    await client.execute({ sql: "SELECT 1", args: [] });
   } catch (error) {
-    console.warn("Failed to enable foreign keys:", error);
+    console.error("Database connection test failed:", error);
+    const errorMsg = error instanceof Error ? error.message : "Unknown error";
+    throw new Error(`Database connection failed: ${errorMsg}`);
   }
 
   return {

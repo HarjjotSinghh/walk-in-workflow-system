@@ -138,22 +138,66 @@ app.use("/api/*", async (c, next) => {
 // Health check endpoint
 app.get("/health", async (c) => {
   try {
+    // Check if environment variables are set
+    const dbUrl = c.env.TURSO_DB_URL;
+    const hasAuthToken = !!c.env.TURSO_DB_AUTH_TOKEN;
+    
+    if (!dbUrl) {
+      return c.json(
+        {
+          status: "error",
+          database: "configuration error",
+          error: "TURSO_DB_URL is not set",
+          timestamp: new Date().toISOString(),
+        },
+        500
+      );
+    }
+
+    if (!hasAuthToken) {
+      return c.json(
+        {
+          status: "error",
+          database: "configuration error",
+          error: "TURSO_DB_AUTH_TOKEN is not set",
+          timestamp: new Date().toISOString(),
+        },
+        500
+      );
+    }
+
     // Test database connection using libsql
     const { createDbClient } = await import("./db/utils");
     const db = await createDbClient(c.env);
+    
+    // Simple test query
     const testQuery = await db.prepare("SELECT 1 as test").first();
 
     return c.json({
       status: "healthy",
       database: testQuery ? "connected" : "not connected",
+      dbUrl: dbUrl.replace(/\/\/.*@/, "//***@"), // Mask credentials in URL
       timestamp: new Date().toISOString(),
     });
   } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    console.error("Health check error:", {
+      message: errorMessage,
+      stack: errorStack,
+      env: {
+        hasDbUrl: !!c.env.TURSO_DB_URL,
+        hasAuthToken: !!c.env.TURSO_DB_AUTH_TOKEN,
+        dbUrlPrefix: c.env.TURSO_DB_URL?.substring(0, 20) || "not set",
+      },
+    });
+
     return c.json(
       {
         status: "error",
         database: "connection failed",
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: errorMessage,
         timestamp: new Date().toISOString(),
       },
       500
