@@ -99,12 +99,66 @@ export async function createLibsqlClient(env: Env) {
   return client;
 }
 
-// You can specify any property from the libsql connection options
-// This will use environment variables, but in Node.js it's better to use createDbClient with explicit env
-const envVars = getEnv();
-export const db = drizzle({
-  connection: {
-    url: envVars.TURSO_DB_URL || "file:dev.db",
-    authToken: envVars.TURSO_DB_AUTH_TOKEN || undefined,
+// Global db export - only available in Node.js, not in Cloudflare Workers
+// In Cloudflare Workers, always use createDbClient(env) with explicit env parameter
+// This is lazy-initialized to prevent module load errors in Cloudflare Workers
+let _db: ReturnType<typeof drizzle> | null = null;
+
+function getGlobalDb() {
+  // Only initialize in Node.js environment
+  if (typeof process === "undefined") {
+    throw new Error(
+      "The global 'db' export is not available in Cloudflare Workers. " +
+      "Use createDbClient(env) instead with the env parameter from the request context."
+    );
+  }
+  
+  if (!_db) {
+    const envVars = getEnv();
+    const dbUrl = envVars.TURSO_DB_URL;
+    
+    if (!dbUrl) {
+      throw new Error(
+        "TURSO_DB_URL environment variable is required. " +
+        "The global 'db' export should only be used in Node.js development. " +
+        "In Cloudflare Workers, use createDbClient(env) instead."
+      );
+    }
+    
+    if (dbUrl.startsWith("file:")) {
+      // Only allow file: URLs in Node.js development
+      if (process.env.NODE_ENV === "production") {
+        throw new Error(
+          `Invalid database URL: "${dbUrl}". ` +
+          "File URLs should not be used in production. " +
+          "Please use a remote database URL (libsql://, wss://, ws://, https://, or http://)."
+        );
+      }
+    }
+    
+    // Create client synchronously for Node.js
+    // This will only execute when db is actually accessed, not during module load
+    const client = createClient({
+      url: dbUrl,
+      authToken: envVars.TURSO_DB_AUTH_TOKEN || undefined,
+    });
+    
+    _db = drizzle({
+      client,
+    });
+  }
+  
+  return _db;
+}
+
+// Export a Proxy that lazily initializes the db only when accessed
+// This prevents initialization during module load in Cloudflare Workers
+// The Proxy ensures createClient is never called during module load/bundling
+export const db = new Proxy({} as ReturnType<typeof drizzle>, {
+  get(_target, prop) {
+    // In Cloudflare Workers, this will throw immediately
+    // In Node.js, this will lazily initialize the db
+    const dbInstance = getGlobalDb();
+    return (dbInstance as any)[prop];
   },
 });

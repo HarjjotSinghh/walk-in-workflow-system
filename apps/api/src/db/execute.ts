@@ -1,15 +1,19 @@
-import { drizzle } from 'drizzle-orm/d1';
-import { user } from './schema';
-import { db } from './index';
+// Legacy/unused file - kept for reference but not actively used
+// This file previously used the global db export which caused issues in Cloudflare Workers
+// If needed in the future, use createDbClient(env) instead
 
 export interface Env {
-  DB: D1Database;
-  DB_PROD: D1Database;
+  TURSO_DB_URL: string;
+  TURSO_DB_AUTH_TOKEN: string;
 }
 
 export default {
-  async fetch(request: Request, env: Env) {
-    const result = await db.select().from(user).all()
-    return Response.json(result);
+  async fetch(_request: Request, _env: Env) {
+    return new Response(
+      "This endpoint is not implemented. Use createDbClient(env) for database access.",
+      {
+        status: 501,
+      }
+    );
   },
 };
