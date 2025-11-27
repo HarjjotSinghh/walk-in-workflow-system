@@ -22,6 +22,21 @@ function generateConnectionId(): string {
   return `conn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
+// Helper to get allowed CORS origin
+function getAllowedOrigin(origin: string | undefined): string {
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:3000',
+    'http://localhost:4173',
+    'https://wiws.verbflo.com',
+    'https://www.wiws.verbflo.com',
+    'https://wiws.pages.dev',
+    'https://wiws.vercel.app',
+  ];
+  return origin && allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+}
+
 // Helper to clean up connection
 function cleanupConnection(connectionId: string) {
   const connection = connections.get(connectionId);
@@ -57,7 +72,8 @@ streamRoutes.get('/', async (c) => {
   try {
     // Handle preflight requests
     if (c.req.method === 'OPTIONS') {
-      c.header('Access-Control-Allow-Origin', c.req.header('origin') || '*');
+      const corsOrigin = getAllowedOrigin(c.req.header('origin'));
+      c.header('Access-Control-Allow-Origin', corsOrigin);
       c.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
       c.header('Access-Control-Allow-Headers', 'Cache-Control, Content-Type, Authorization');
       c.header('Access-Control-Allow-Credentials', 'true');
@@ -84,90 +100,112 @@ streamRoutes.get('/', async (c) => {
 
     console.log(`New SSE connection: ${connectionId} for user ${userId} with role ${userRole}`);
 
-    // Set SSE headers
-    c.header('Content-Type', 'text/event-stream; charset=utf-8');
-    c.header('Cache-Control', 'no-cache');
-    c.header('Connection', 'keep-alive');
-    c.header('Access-Control-Allow-Origin', c.req.header('origin') || '*');
-    c.header('Access-Control-Allow-Credentials', 'true');
-    c.header('Access-Control-Allow-Headers', 'Cache-Control, Content-Type, Authorization');
+    // Get CORS origin
+    const corsOrigin = getAllowedOrigin(c.req.header('origin'));
 
     // Create readable stream for SSE
     const stream = new ReadableStream({
       start(controller) {
-        // Send initial connection message
-        const initialMessage = {
-          type: 'connection',
-          data: {
-            connectionId,
-            message: 'Connected to wiws real-time updates',
-            userRole,
-            userId,
-            timestamp: new Date().toISOString(),
-            activeConnections: connections.size,
-          },
-        };
-        
-        // Store connection
-        const connection: SSEConnection = {
-          id: connectionId,
-          userId,
-          userRole,
-          controller,
-          createdAt: new Date(),
-        };
-        connections.set(connectionId, connection);
-        
-        // Send initial message
-        const encoder = new TextEncoder();
-        const initialData = `data: ${JSON.stringify(initialMessage)}\n\n`;
-        controller.enqueue(encoder.encode(initialData));
-
-        // Send welcome message with current status if reception/pa
-        if (userRole === 'reception' || userRole === 'pa') {
-          const welcomeMessage = {
-            type: 'status_update',
+        try {
+          // Send initial connection message
+          const initialMessage = {
+            type: 'connection',
             data: {
-              message: userRole === 'reception' 
-                ? 'Ready to register new visitors'
-                : 'Ready to review pending approvals',
-              timestamp: new Date().toISOString(),
-            },
-          };
-          const welcomeData = `data: ${JSON.stringify(welcomeMessage)}\n\n`;
-          controller.enqueue(encoder.encode(welcomeData));
-        }
-
-        // Send periodic heartbeat
-        const heartbeatInterval = setInterval(() => {
-          const heartbeat = {
-            type: 'heartbeat',
-            data: {
+              connectionId,
+              message: 'Connected to wiws real-time updates',
+              userRole,
+              userId,
               timestamp: new Date().toISOString(),
               activeConnections: connections.size,
             },
           };
           
-          try {
-            const heartbeatData = `data: ${JSON.stringify(heartbeat)}\n\n`;
-            controller.enqueue(encoder.encode(heartbeatData));
-          } catch (error) {
-            console.error('Failed to send heartbeat:', error);
-            clearInterval(heartbeatInterval);
-            cleanupConnection(connectionId);
-          }
-        }, 30000); // Every 30 seconds
+          // Store connection
+          const connection: SSEConnection = {
+            id: connectionId,
+            userId,
+            userRole,
+            controller,
+            createdAt: new Date(),
+          };
+          connections.set(connectionId, connection);
+          
+          // Send initial message
+          const encoder = new TextEncoder();
+          const initialData = `data: ${JSON.stringify(initialMessage)}\n\n`;
+          controller.enqueue(encoder.encode(initialData));
 
-        // Store cleanup function
-        (controller as any).cleanup = () => {
-          clearInterval(heartbeatInterval);
+          // Send welcome message with current status if reception/pa
+          if (userRole === 'reception' || userRole === 'pa') {
+            const welcomeMessage = {
+              type: 'status_update',
+              data: {
+                message: userRole === 'reception' 
+                  ? 'Ready to register new visitors'
+                  : 'Ready to review pending approvals',
+                timestamp: new Date().toISOString(),
+              },
+            };
+            const welcomeData = `data: ${JSON.stringify(welcomeMessage)}\n\n`;
+            controller.enqueue(encoder.encode(welcomeData));
+          }
+
+          // Send periodic heartbeat using recursive timeout (Cloudflare Workers compatible)
+          let heartbeatTimeout: ReturnType<typeof setTimeout> | null = null;
+          
+          const scheduleHeartbeat = () => {
+            heartbeatTimeout = setTimeout(() => {
+              const heartbeat = {
+                type: 'heartbeat',
+                data: {
+                  timestamp: new Date().toISOString(),
+                  activeConnections: connections.size,
+                },
+              };
+              
+              try {
+                const heartbeatData = `data: ${JSON.stringify(heartbeat)}\n\n`;
+                controller.enqueue(encoder.encode(heartbeatData));
+                // Schedule next heartbeat
+                scheduleHeartbeat();
+              } catch (error) {
+                console.error('Failed to send heartbeat:', error);
+                if (heartbeatTimeout) {
+                  clearTimeout(heartbeatTimeout);
+                  heartbeatTimeout = null;
+                }
+                cleanupConnection(connectionId);
+              }
+            }, 30000); // Every 30 seconds
+          };
+          
+          // Start heartbeat
+          scheduleHeartbeat();
+
+          // Store cleanup function on controller
+          const cleanup = () => {
+            if (heartbeatTimeout) {
+              clearTimeout(heartbeatTimeout);
+              heartbeatTimeout = null;
+            }
+            cleanupConnection(connectionId);
+          };
+          (controller as any).cleanup = cleanup;
+        } catch (error) {
+          console.error('Error in stream start:', error);
+          try {
+            controller.close();
+          } catch (closeError) {
+            console.error('Error closing controller:', closeError);
+          }
           cleanupConnection(connectionId);
-        };
+        }
       },
       cancel() {
-        // Clean up on close
-        if ((this as any).cleanup) {
-          (this as any).cleanup();
+        // Clean up on close - find the connection and clean it up
+        const connection = connections.get(connectionId);
+        if (connection) {
+          cleanupConnection(connectionId);
         }
       },
     });
@@ -177,7 +215,7 @@ streamRoutes.get('/', async (c) => {
         'Content-Type': 'text/event-stream; charset=utf-8',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': c.req.header('origin') || '*',
+        'Access-Control-Allow-Origin': corsOrigin,
         'Access-Control-Allow-Credentials': 'true',
         'Access-Control-Allow-Headers': 'Cache-Control, Content-Type, Authorization',
       },
@@ -273,7 +311,6 @@ streamRoutes.get('/status', async (c) => {
       data: {
         total_connections: connections.size,
         connections_by_role: Object.fromEntries(connectionsByRole),
-        uptime: process.uptime ? `${Math.floor(process.uptime())}s` : 'N/A',
         timestamp: new Date().toISOString(),
       },
     });
