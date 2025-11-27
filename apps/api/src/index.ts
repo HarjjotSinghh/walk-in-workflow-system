@@ -30,36 +30,10 @@ const app = new Hono<{
 app.use("*", logger());
 app.use("*", prettyJSON());
 
-// CORS configuration for auth routes
+// Global CORS middleware - applies to all routes
+// This ensures CORS headers are present for all requests, including preflight OPTIONS
 app.use(
-  "/api/auth/**",
-  cors({
-    origin: [
-      "http://localhost:5173", // Vite dev server default
-      "http://localhost:5174", // Vite dev server alternative
-      "http://localhost:3000", // Alternative dev server
-      "http://localhost:4173", // Vite preview server
-      "http://127.0.0.1:5173", // Alternative localhost
-      "http://127.0.0.1:5174", // Alternative localhost
-      "https://wiws.pages.dev",
-      "https://wiws.vercel.app",
-      "https://wiws-frontend.pages.dev",
-      "https://wiws.harjjotsinghh.workers.dev",
-      "https://wiws-prod.harjjotsinghh.workers.dev",
-      "https://wiws-db.harjjotsinghh.workers.dev",
-      "https://wiws-frontend.harjjotsinghh.workers.dev",
-    ],
-    allowHeaders: ["Content-Type", "Authorization", "Cookie"],
-    allowMethods: ["POST", "GET", "OPTIONS"],
-    exposeHeaders: ["Content-Length", "Set-Cookie"],
-    maxAge: 600,
-    credentials: true,
-  })
-);
-
-// CORS for other API routes
-app.use(
-  "/api/*",
+  "*",
   cors({
     origin: (origin) => {
       // List of allowed origins (required when using credentials: true)
@@ -78,9 +52,11 @@ app.use(
         "https://wiws-prod.harjjotsinghh.workers.dev",
         "https://wiws-db.harjjotsinghh.workers.dev",
         "https://wiws-frontend.harjjotsinghh.workers.dev",
+        "https://wiws.verbflo.com",
+        "https://www.wiws.verbflo.com",
       ];
 
-      // Allow requests with no origin (like mobile apps or curl requests) - but can't use wildcard with credentials
+      // Allow requests with no origin (like mobile apps or curl requests)
       if (!origin) {
         // For requests without origin, allow but note that cookies won't work
         return allowedOrigins[0] || "http://localhost:5173";
@@ -94,11 +70,46 @@ app.use(
       // Deny requests from unknown origins when using credentials
       return null;
     },
-    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowHeaders: ["Content-Type", "Authorization", "Cookie"],
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization", "Cookie", "X-Requested-With"],
+    exposeHeaders: ["Content-Length", "Set-Cookie"],
     credentials: true, // Required for cookies to work
+    maxAge: 86400, // 24 hours
   })
 );
+
+// CORS configuration for auth routes (more specific, but global CORS above handles it)
+app.use(
+  "/api/auth/**",
+  cors({
+    origin: [
+      "http://localhost:5173", // Vite dev server default
+      "http://localhost:5174", // Vite dev server alternative
+      "http://localhost:3000", // Alternative dev server
+      "http://localhost:4173", // Vite preview server
+      "http://127.0.0.1:5173", // Alternative localhost
+      "http://127.0.0.1:5174", // Alternative localhost
+      "https://wiws.pages.dev",
+      "https://wiws.vercel.app",
+      "https://wiws-frontend.pages.dev",
+      "https://wiws.harjjotsinghh.workers.dev",
+      "https://wiws-prod.harjjotsinghh.workers.dev",
+      "https://wiws-db.harjjotsinghh.workers.dev",
+      "https://wiws-frontend.harjjotsinghh.workers.dev",
+      "https://wiws.verbflo.com",
+      "https://www.wiws.verbflo.com",
+    ],
+    allowHeaders: ["Content-Type", "Authorization", "Cookie"],
+    allowMethods: ["POST", "GET", "OPTIONS"],
+    exposeHeaders: ["Content-Length", "Set-Cookie"],
+    maxAge: 600,
+    credentials: true,
+  })
+);
+
+// Note: Global CORS middleware above handles all routes, including /api/*
+// The specific CORS configurations below are kept for backward compatibility
+// but the global middleware ensures all routes have proper CORS headers
 
 // Enhanced auth middleware for protected routes
 // Note: /api/auth/* routes are handled by authRoutes below
