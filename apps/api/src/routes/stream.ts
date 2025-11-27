@@ -80,150 +80,220 @@ streamRoutes.get('/', async (c) => {
       return new Response(null, { status: 204 });
     }
 
-    // Get user from context (set by auth middleware)
+    // Get user from context (set by optionalAuth middleware)
+    // The optionalAuth middleware should have run before this route
     const user = (c as any).get('user');
     
     let userRole: string;
     let userId: string;
     
     // If user is authenticated via middleware, use their info
-    if (user) {
+    if (user && user.id && user.role) {
       userRole = user.role;
       userId = user.id;
+      console.log(
+        `SSE connection: User authenticated via middleware - ${userId} (${userRole})`
+      );
     } else {
-      // Fallback to query parameters (for backward compatibility)
-      userRole = c.req.query('role') || 'guest';
-      userId = c.req.query('user_id') || 'unknown';
+      // Fallback to query parameters (for backward compatibility or when auth fails)
+      // This is needed because EventSource can't send custom headers
+      userRole = c.req.query("role") || "guest";
+      userId = c.req.query("user_id") || "unknown";
+
+      // Log warning if no user from middleware but query params provided
+      if (c.req.query("user_id") && !user) {
+        console.warn(
+          `SSE connection: User not authenticated via middleware, using query params for user ${userId} with role ${userRole}`
+        );
+      } else if (!c.req.query("user_id")) {
+        console.warn(
+          `SSE connection: No user authentication and no query params provided, using guest mode`
+        );
+      }
     }
-    
+
+    // Validate userRole and userId
+    if (!userRole || !userId || userId === "unknown") {
+      console.warn(
+        `SSE connection: Invalid userRole (${userRole}) or userId (${userId})`
+      );
+      // Still allow connection but with limited permissions
+      userRole = userRole || "guest";
+      userId = userId || "unknown";
+    }
+
     const connectionId = generateConnectionId();
 
-    console.log(`New SSE connection: ${connectionId} for user ${userId} with role ${userRole}`);
+    console.log(
+      `New SSE connection: ${connectionId} for user ${userId} with role ${userRole}`
+    );
 
     // Get CORS origin
-    const corsOrigin = getAllowedOrigin(c.req.header('origin'));
+    const corsOrigin = getAllowedOrigin(c.req.header("origin"));
 
     // Create readable stream for SSE
-    const stream = new ReadableStream({
-      start(controller) {
-        try {
-          // Send initial connection message
-          const initialMessage = {
-            type: 'connection',
-            data: {
-              connectionId,
-              message: 'Connected to wiws real-time updates',
-              userRole,
+    let stream: ReadableStream;
+    try {
+      stream = new ReadableStream({
+        start(controller) {
+          try {
+            // Store connection first (before sending any data)
+            const connection: SSEConnection = {
+              id: connectionId,
               userId,
-              timestamp: new Date().toISOString(),
-              activeConnections: connections.size,
-            },
-          };
-          
-          // Store connection
-          const connection: SSEConnection = {
-            id: connectionId,
-            userId,
-            userRole,
-            controller,
-            createdAt: new Date(),
-          };
-          connections.set(connectionId, connection);
-          
-          // Send initial message
-          const encoder = new TextEncoder();
-          const initialData = `data: ${JSON.stringify(initialMessage)}\n\n`;
-          controller.enqueue(encoder.encode(initialData));
+              userRole,
+              controller,
+              createdAt: new Date(),
+            };
+            connections.set(connectionId, connection);
 
-          // Send welcome message with current status if reception/pa
-          if (userRole === 'reception' || userRole === 'pa') {
-            const welcomeMessage = {
-              type: 'status_update',
+            // Send initial connection message
+            const initialMessage = {
+              type: "connection",
               data: {
-                message: userRole === 'reception' 
-                  ? 'Ready to register new visitors'
-                  : 'Ready to review pending approvals',
+                connectionId,
+                message: "Connected to wiws real-time updates",
+                userRole,
+                userId,
                 timestamp: new Date().toISOString(),
+                activeConnections: connections.size,
               },
             };
-            const welcomeData = `data: ${JSON.stringify(welcomeMessage)}\n\n`;
-            controller.enqueue(encoder.encode(welcomeData));
-          }
 
-          // Send periodic heartbeat using recursive timeout (Cloudflare Workers compatible)
-          let heartbeatTimeout: ReturnType<typeof setTimeout> | null = null;
-          
-          const scheduleHeartbeat = () => {
-            heartbeatTimeout = setTimeout(() => {
-              const heartbeat = {
-                type: 'heartbeat',
-                data: {
-                  timestamp: new Date().toISOString(),
-                  activeConnections: connections.size,
-                },
-              };
-              
+            // Send initial message
+            const encoder = new TextEncoder();
+            const initialData = `data: ${JSON.stringify(initialMessage)}\n\n`;
+
+            try {
+              controller.enqueue(encoder.encode(initialData));
+            } catch (enqueueError) {
+              console.error("Failed to enqueue initial message:", enqueueError);
+              cleanupConnection(connectionId);
+              return;
+            }
+
+            // Send welcome message with current status if reception/pa
+            if (userRole === "reception" || userRole === "pa") {
               try {
-                const heartbeatData = `data: ${JSON.stringify(heartbeat)}\n\n`;
-                controller.enqueue(encoder.encode(heartbeatData));
-                // Schedule next heartbeat
-                scheduleHeartbeat();
-              } catch (error) {
-                console.error('Failed to send heartbeat:', error);
-                if (heartbeatTimeout) {
-                  clearTimeout(heartbeatTimeout);
-                  heartbeatTimeout = null;
-                }
-                cleanupConnection(connectionId);
+                const welcomeMessage = {
+                  type: "status_update",
+                  data: {
+                    message:
+                      userRole === "reception"
+                        ? "Ready to register new visitors"
+                        : "Ready to review pending approvals",
+                    timestamp: new Date().toISOString(),
+                  },
+                };
+                const welcomeData = `data: ${JSON.stringify(welcomeMessage)}\n\n`;
+                controller.enqueue(encoder.encode(welcomeData));
+              } catch (welcomeError) {
+                console.error("Failed to send welcome message:", welcomeError);
+                // Don't fail the connection if welcome message fails
               }
-            }, 30000); // Every 30 seconds
-          };
-          
-          // Start heartbeat
-          scheduleHeartbeat();
+            }
 
-          // Store cleanup function on controller
-          const cleanup = () => {
-            if (heartbeatTimeout) {
-              clearTimeout(heartbeatTimeout);
-              heartbeatTimeout = null;
+            // Send periodic heartbeat using recursive timeout (Cloudflare Workers compatible)
+            let heartbeatTimeout: ReturnType<typeof setTimeout> | null = null;
+
+            const scheduleHeartbeat = () => {
+              heartbeatTimeout = setTimeout(() => {
+                const heartbeat = {
+                  type: "heartbeat",
+                  data: {
+                    timestamp: new Date().toISOString(),
+                    activeConnections: connections.size,
+                  },
+                };
+
+                try {
+                  const heartbeatData = `data: ${JSON.stringify(heartbeat)}\n\n`;
+                  controller.enqueue(encoder.encode(heartbeatData));
+                  // Schedule next heartbeat
+                  scheduleHeartbeat();
+                } catch (error) {
+                  console.error("Failed to send heartbeat:", error);
+                  if (heartbeatTimeout) {
+                    clearTimeout(heartbeatTimeout);
+                    heartbeatTimeout = null;
+                  }
+                  cleanupConnection(connectionId);
+                }
+              }, 30000); // Every 30 seconds
+            };
+
+            // Start heartbeat
+            scheduleHeartbeat();
+
+            // Store cleanup function on controller
+            const cleanup = () => {
+              if (heartbeatTimeout) {
+                clearTimeout(heartbeatTimeout);
+                heartbeatTimeout = null;
+              }
+              cleanupConnection(connectionId);
+            };
+            (controller as any).cleanup = cleanup;
+          } catch (error) {
+            console.error("Error in stream start:", error);
+            try {
+              controller.close();
+            } catch (closeError) {
+              console.error("Error closing controller:", closeError);
             }
             cleanupConnection(connectionId);
-          };
-          (controller as any).cleanup = cleanup;
-        } catch (error) {
-          console.error('Error in stream start:', error);
-          try {
-            controller.close();
-          } catch (closeError) {
-            console.error('Error closing controller:', closeError);
           }
-          cleanupConnection(connectionId);
-        }
-      },
-      cancel() {
-        // Clean up on close - find the connection and clean it up
-        const connection = connections.get(connectionId);
-        if (connection) {
-          cleanupConnection(connectionId);
-        }
-      },
-    });
+        },
+        cancel() {
+          // Clean up on close - find the connection and clean it up
+          const connection = connections.get(connectionId);
+          if (connection) {
+            cleanupConnection(connectionId);
+          }
+        },
+      });
+    } catch (streamError) {
+      console.error("Failed to create ReadableStream:", streamError);
+      return c.json(
+        errorResponse(
+          `Failed to create SSE stream: ${streamError instanceof Error ? streamError.message : "Unknown error"}`
+        ),
+        500
+      );
+    }
 
-    return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/event-stream; charset=utf-8',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': corsOrigin,
-        'Access-Control-Allow-Credentials': 'true',
-        'Access-Control-Allow-Headers': 'Cache-Control, Content-Type, Authorization',
-      },
-    });
+    try {
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/event-stream; charset=utf-8",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+          "Access-Control-Allow-Origin": corsOrigin,
+          "Access-Control-Allow-Credentials": "true",
+          "Access-Control-Allow-Headers":
+            "Cache-Control, Content-Type, Authorization",
+        },
+      });
+    } catch (responseError) {
+      console.error("Failed to create Response:", responseError);
+      return c.json(
+        errorResponse(
+          `Failed to create SSE response: ${responseError instanceof Error ? responseError.message : "Unknown error"}`
+        ),
+        500
+      );
+    }
 
   } catch (error) {
     console.error('SSE stream error:', error);
-    return c.json(errorResponse('Failed to establish SSE connection'), 500);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('SSE stream error details:', {
+      message: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+      url: c.req.url,
+      method: c.req.method,
+    });
+    return c.json(errorResponse(`Failed to establish SSE connection: ${errorMessage}`), 500);
   }
 });
 
